@@ -175,11 +175,13 @@ export default function Dashboard() {
     );
   }
 
-  const fundingChartData = (Array.isArray(fundingByYear) ? fundingByYear : []).map((d) => ({
-    year: String(d.year),
-    funding: parseFloat(d.total_amount),
-    rounds: parseInt(d.rounds_count, 10),
-  }));
+  const fundingChartData = [...(Array.isArray(fundingByYear) ? fundingByYear : [])]
+    .reverse()
+    .map((d) => ({
+      year: (d as { month_year?: string; year?: number }).month_year ?? String((d as { year?: number }).year),
+      funding: parseFloat(d.total_amount),
+      rounds: parseInt(d.rounds_count, 10),
+    }));
 
   const stageChartData = (Array.isArray(roundsByStage) ? roundsByStage : []).map((d) => ({
     name: d.name || "Unknown",
@@ -230,7 +232,7 @@ export default function Dashboard() {
 
       {/* Charts row 1 */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <ChartCard title="Funding by year">
+        <ChartCard title="Funding by month/year">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={fundingChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />

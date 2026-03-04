@@ -76,8 +76,15 @@ export async function GET(req: Request) {
     const cols = fields.map((id) => fieldLabels[id] || id);
     const header = cols.join(",");
 
+    const formatMonthYear = (d: string | Date | null) => {
+      if (!d) return "";
+      const date = new Date(d);
+      if (isNaN(date.getTime())) return "";
+      return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    };
+
     const lines = rows.map((r) => {
-      const year = r.date ? new Date(r.date).getFullYear() : "";
+      const year = formatMonthYear(r.date);
       const amount = formatAmount(r.amount);
       const link = r.slug ? `https://stanbase.tech/funding-round/${r.slug}` : "";
       const values: Record<string, string> = {

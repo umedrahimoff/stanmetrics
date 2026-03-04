@@ -4,7 +4,7 @@ export const UZVC_FIELDS_SELECTABLE = [
   { id: "product_stage", label: "Product stage" },
   { id: "venture_fund", label: "Name of the venture fund that invested" },
   { id: "amount", label: "Investment amount (USD)" },
-  { id: "year", label: "Investment year" },
+  { id: "year", label: "Investment month/year" },
 ] as const;
 
 export const UZVC_LINK_FIELD = { id: "link", label: "Stanbase link" } as const;

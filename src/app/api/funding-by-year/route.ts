@@ -17,13 +17,16 @@ export async function GET(req: Request) {
     const result = await pool.query({
       text: `
       SELECT 
+        TO_CHAR(DATE_TRUNC('month', r.date), 'Mon YYYY') as month_year,
         EXTRACT(YEAR FROM r.date)::int as year,
+        EXTRACT(MONTH FROM r.date)::int as month,
         COUNT(*) as rounds_count,
         COALESCE(SUM(r.amount), 0) as total_amount
       FROM investment_rounds r
       WHERE r.status_id = 1 AND r.date IS NOT NULL ${roundsWhere}
-      GROUP BY EXTRACT(YEAR FROM r.date)
-      ORDER BY year ASC
+      GROUP BY EXTRACT(YEAR FROM r.date), EXTRACT(MONTH FROM r.date)
+      ORDER BY year DESC, month DESC
+      LIMIT 24
     `,
       values: countries.length ? [countries] : [],
     });

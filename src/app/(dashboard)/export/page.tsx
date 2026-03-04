@@ -107,9 +107,12 @@ export default function ExportPage() {
       lines.push(`Events,${metrics.events}`);
       lines.push("");
     }
-    lines.push("Funding by year");
-    lines.push("Year,Rounds,Amount (USD)");
-    fundingByYear.slice(0, 10).forEach((d) => lines.push(`${d.year},${d.rounds_count},${formatAmount(d.total_amount)}`));
+    lines.push("Funding by month/year");
+    lines.push("Month/Year,Rounds,Amount (USD)");
+    fundingByYear.slice(0, 10).forEach((d) => {
+      const label = (d as { month_year?: string }).month_year ?? String((d as { year?: number }).year);
+      lines.push(`${label},${d.rounds_count},${formatAmount(d.total_amount)}`);
+    });
     lines.push("");
     lines.push("Companies by country");
     lines.push("Country,Count");
