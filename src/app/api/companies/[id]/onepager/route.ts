@@ -38,14 +38,14 @@ export async function GET(
       return NextResponse.json({ error: "Invalid company ID" }, { status: 400 });
     }
 
-    const [companyRes, roundsRes] = await Promise.all([
+    const [companyRes, roundsRes, teamRes] = await Promise.all([
       pool.query(
         {
           text: `
         SELECT 
           c.id,
           c.name,
-          COALESCE(c.short_description->>'en', c.description->>'en', c.short_description->>'ru', c.description->>'ru') as description,
+          COALESCE(c.description->>'en', c.description->>'ru', c.short_description->>'en', c.short_description->>'ru') as description,
           c.founded,
           c.employees_count,
           COALESCE(co.name->>'en', co.name->>'ru', co.name::text) as country,
@@ -73,6 +73,8 @@ export async function GET(
         {
           text: `
         SELECT 
+          r.id,
+          r.slug,
           r.date,
           r.amount,
           r.valuation,
@@ -98,6 +100,35 @@ export async function GET(
           values: [companyId],
         }
       ),
+      (async () => {
+        const sanitize = (s: string) => (s && /^[a-z0-9_]+$/i.test(s) ? s : "");
+        const tables = ["company_members", "founders", "team_members"];
+        for (const t of tables) {
+          const exists = await pool.query(
+            "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1",
+            [t]
+          );
+          if (!exists.rows.length) continue;
+          const cols = await pool.query(
+            "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1",
+            [t]
+          );
+          const colNames = cols.rows.map((r) => sanitize(r.column_name)).filter(Boolean);
+          if (!colNames.includes("company_id")) continue;
+          const nameCol = colNames.find((c) => ["name", "full_name", "fullname"].includes(c));
+          if (!nameCol) continue;
+          const roleCol = colNames.find((c) => ["position", "role", "title", "job_title"].includes(c));
+          const selectCols = roleCol ? [nameCol, roleCol] : [nameCol];
+          const res = await pool.query(
+            {
+              text: `SELECT ${selectCols.join(", ")} FROM "${t}" WHERE company_id = $1 ${colNames.includes("deleted_at") ? "AND deleted_at IS NULL" : ""} ORDER BY id`,
+              values: [companyId],
+            }
+          );
+          return { rows: res.rows.map((r: Record<string, string>) => ({ name: r[nameCol] || r.name, position: r[roleCol] || r.position || r.role || r.title || "" })) };
+        }
+        return { rows: [] };
+      })(),
     ]);
 
     const row = companyRes.rows[0];
@@ -106,6 +137,7 @@ export async function GET(
     }
 
     const rounds = roundsRes.rows;
+    const team = Array.isArray(teamRes?.rows) ? teamRes.rows : [];
     const totalFunding = rounds.reduce((sum: number, r: { amount: number | null }) => sum + (r.amount || 0), 0);
 
     const doc = await PDFDocument.create();
@@ -176,20 +208,33 @@ export async function GET(
     const desc = row.description;
     if (desc) {
       section("About");
-      wrapText(String(desc).slice(0, 800), 75).slice(0, 12).forEach((line) => text(line, 9));
+      wrapText(String(desc).slice(0, 1200), 75).slice(0, 18).forEach((line) => text(line, 9));
+      y -= 8;
+    }
+
+    // Team
+    if (team.length > 0) {
+      section("Team");
+      team.slice(0, 15).forEach((m: { name?: string; position?: string; role?: string; title?: string }) => {
+        const role = m.position || m.role || m.title || "";
+        const line = m.name ? (role ? `${m.name} — ${role}` : m.name) : role;
+        if (line) text(line, 9);
+      });
       y -= 8;
     }
 
     // Investment rounds
     if (rounds.length > 0) {
       section("Investment rounds");
-      rounds.slice(0, 10).forEach((r: { date: string | null; amount: number | null; stage: string | null; round_type: string | null; investors: string | null }) => {
+      rounds.slice(0, 10).forEach((r: { slug?: string; date: string | null; amount: number | null; valuation: number | null; stage: string | null; round_type: string | null; investors: string | null }) => {
         const dateStr = r.date ? new Date(r.date).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—";
-        const parts = [dateStr, formatAmount(r.amount), r.stage || "", r.round_type || ""].filter(Boolean);
+        const amountVal = formatAmount(r.amount);
+        const valStr = r.valuation ? ` (val. ${formatAmount(r.valuation)})` : "";
+        const parts = [dateStr, amountVal + valStr, r.stage || "", r.round_type || ""].filter(Boolean);
         page.drawText(parts.join(" · "), { x: margin, y, size: 9, font, color: rgb(0.35, 0.35, 0.35) });
         y -= 12;
         if (r.investors) {
-          page.drawText(`  Investors: ${String(r.investors).slice(0, 70)}${String(r.investors).length > 70 ? "..." : ""}`, {
+          page.drawText(`  Investors: ${String(r.investors).slice(0, 85)}${String(r.investors).length > 85 ? "..." : ""}`, {
             x: margin,
             y,
             size: 8,
