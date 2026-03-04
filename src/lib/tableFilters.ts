@@ -26,4 +26,14 @@ export const TABLE_FILTERS: Record<string, TableFilterSetup> = {
       { key: "founded", label: "Founded", type: "select", options: opts.founded || [] },
     ],
   },
+  investment_rounds: {
+    filtersApi: "/api/tables/investment_rounds/filters",
+    filters: (opts) => [
+      { key: "search", label: "Search", type: "text", placeholder: "Company name..." },
+      { key: "country", label: "Country", type: "multiselect", options: opts.country || [] },
+      { key: "stage", label: "Stage", type: "multiselect", options: opts.stage || [] },
+      { key: "round_type", label: "Round type", type: "multiselect", options: opts.round_type || [] },
+      { key: "year", label: "Year", type: "select", options: opts.year || [] },
+    ],
+  },
 };
