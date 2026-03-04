@@ -18,14 +18,14 @@ export async function GET(req: Request) {
       text: `
       SELECT 
         TO_CHAR(DATE_TRUNC('month', r.date), 'YYYY-MM') as month_year,
-        EXTRACT(YEAR FROM r.date)::int as year,
-        EXTRACT(MONTH FROM r.date)::int as month,
+        EXTRACT(YEAR FROM DATE_TRUNC('month', r.date))::int as year,
+        EXTRACT(MONTH FROM DATE_TRUNC('month', r.date))::int as month,
         COUNT(*) as rounds_count,
         COALESCE(SUM(r.amount), 0) as total_amount
       FROM investment_rounds r
       WHERE r.status_id = 1 AND r.date IS NOT NULL ${roundsWhere}
-      GROUP BY EXTRACT(YEAR FROM r.date), EXTRACT(MONTH FROM r.date)
-      ORDER BY year DESC, month DESC
+      GROUP BY DATE_TRUNC('month', r.date)
+      ORDER BY DATE_TRUNC('month', r.date) DESC
       LIMIT 24
     `,
       values: countries.length ? [countries] : [],
