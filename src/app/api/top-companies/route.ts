@@ -7,10 +7,10 @@ export async function GET(req: Request) {
     const countryParam = searchParams.get("country") || "";
     const countries = countryParam ? countryParam.split(",").map((c) => c.trim()).filter(Boolean) : [];
 
-    const countryWhere =
-      countries.length
-        ? `AND (c.country_id IN (SELECT id FROM countries WHERE name->>'en' = ANY($1::text[]) OR name->>'ru' = ANY($1::text[])))`
-        : "";
+    const countrySub = countries.length
+      ? `(SELECT id FROM countries WHERE COALESCE(name->>'en', name->>'ru', name::text) = ANY($1::text[]))`
+      : "";
+    const countryWhere = countries.length ? `AND c.country_id IN ${countrySub}` : "";
 
     const result = await pool.query({
       text: `

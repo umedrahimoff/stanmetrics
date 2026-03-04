@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     const countries = countryParam ? countryParam.split(",").map((c) => c.trim()).filter(Boolean) : [];
 
     const countrySub = countries.length
-      ? `(SELECT id FROM countries WHERE name->>'en' = ANY($1::text[]) OR name->>'ru' = ANY($1::text[]))`
+      ? `(SELECT id FROM countries WHERE COALESCE(name->>'en', name->>'ru', name::text) = ANY($1::text[]))`
       : "";
     const companiesWhere = countries.length ? `AND c.country_id IN ${countrySub}` : "";
     const investorsWhere = countries.length ? `AND i.country_id IN ${countrySub}` : "";

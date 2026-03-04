@@ -7,11 +7,12 @@ export async function GET(req: Request) {
     const countryParam = searchParams.get("country") || "";
     const countries = countryParam ? countryParam.split(",").map((c) => c.trim()).filter(Boolean) : [];
 
-    const countryWhere =
-      countries.length
-        ? `AND (r.country_id IN (SELECT id FROM countries WHERE name->>'en' = ANY($1::text[]) OR name->>'ru' = ANY($1::text[]))
-            OR r.company_id IN (SELECT id FROM companies c JOIN countries co ON co.id = c.country_id WHERE co.name->>'en' = ANY($1::text[]) OR co.name->>'ru' = ANY($1::text[])))`
-        : "";
+    const countrySub = countries.length
+      ? `(SELECT id FROM countries WHERE COALESCE(name->>'en', name->>'ru', name::text) = ANY($1::text[]))`
+      : "";
+    const countryWhere = countries.length
+      ? `AND (r.country_id IN ${countrySub} OR r.company_id IN (SELECT id FROM companies WHERE country_id IN ${countrySub}))`
+      : "";
 
     const result = await pool.query({
       text: `

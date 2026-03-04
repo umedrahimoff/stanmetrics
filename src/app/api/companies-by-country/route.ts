@@ -9,7 +9,7 @@ export async function GET(req: Request) {
 
     const countryFilter =
       countries.length
-        ? `AND (c.name->>'en' = ANY($1::text[]) OR c.name->>'ru' = ANY($1::text[]))`
+        ? `AND COALESCE(c.name->>'en', c.name->>'ru', c.name::text) = ANY($1::text[])`
         : "";
 
     const result = await pool.query({
