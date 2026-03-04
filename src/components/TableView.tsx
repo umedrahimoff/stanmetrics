@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import FilterBar from "@/components/FilterBar";
 import type { FilterConfig } from "@/components/FilterBar";
 import TableSkeleton from "@/components/TableSkeleton";
+import { Download } from "lucide-react";
 import { TABLE_FILTERS } from "@/lib/tableFilters";
 import { cachedFetch, buildQueryString } from "@/lib/fetch-cache";
 
@@ -163,9 +164,10 @@ export default function TableView({ tableName }: TableViewProps) {
     );
   }
 
-  const columns = Object.keys(data.rows[0]).filter(
+  const baseColumns = Object.keys(data.rows[0]).filter(
     (c) => !["stanbase_url", "company_url", "round_url"].includes(c)
   );
+  const columns = tableName === "companies" ? [...baseColumns, "_onepager"] : baseColumns;
 
   return (
     <Card>
@@ -195,7 +197,7 @@ export default function TableView({ tableName }: TableViewProps) {
                     key={col}
                     className="px-4 py-3 text-left font-medium text-slate-600"
                   >
-                    {COLUMN_LABELS[col] || col.replace(/_/g, " ")}
+                    {col === "_onepager" ? "" : (COLUMN_LABELS[col] || col.replace(/_/g, " "))}
                   </th>
                 ))}
               </tr>
@@ -207,6 +209,20 @@ export default function TableView({ tableName }: TableViewProps) {
                   className="border-b border-slate-100 hover:bg-slate-50/50"
                 >
                   {columns.map((col) => {
+                    if (col === "_onepager") {
+                      return (
+                        <td key={col} className="px-4 py-2">
+                          <a
+                            href={`/api/companies/${row.id}/onepager`}
+                            download
+                            title="Download OnePager"
+                            className="inline-flex rounded bg-sky-600 p-1.5 text-white hover:bg-sky-700"
+                          >
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </td>
+                      );
+                    }
                     const val = row[col];
                     const cellUrl = getCellUrl(col, tableName, row);
                     const isInvestorsCol = tableName === "investment_rounds" && col === "investors";
