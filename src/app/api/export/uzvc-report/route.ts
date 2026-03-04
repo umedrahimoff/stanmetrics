@@ -12,6 +12,11 @@ function escapeCsv(v: string | null): string {
   return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+function formatAmount(n: number | null): string {
+  if (n == null) return "";
+  return Math.round(n).toLocaleString("en-US");
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -73,12 +78,11 @@ export async function GET(req: Request) {
 
     const lines = rows.map((r) => {
       const year = r.date ? new Date(r.date).getFullYear() : "";
-      const amount = r.amount != null ? String(r.amount) : "";
+      const amount = formatAmount(r.amount);
       const link = r.slug ? `https://stanbase.tech/funding-round/${r.slug}` : "";
       const values: Record<string, string> = {
         startup_name: escapeCsv(r.startup_name),
         project_sector: escapeCsv(r.project_sector),
-        customer_type: "",
         product_stage: escapeCsv(r.product_stage),
         venture_fund: escapeCsv(r.venture_fund),
         amount: escapeCsv(amount),
