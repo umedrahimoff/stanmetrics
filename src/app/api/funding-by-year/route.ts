@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     const result = await pool.query({
       text: `
       SELECT 
-        TO_CHAR(DATE_TRUNC('month', r.date), 'Mon YYYY') as month_year,
+        TO_CHAR(DATE_TRUNC('month', r.date), 'YYYY-MM') as month_year,
         EXTRACT(YEAR FROM r.date)::int as year,
         EXTRACT(MONTH FROM r.date)::int as month,
         COUNT(*) as rounds_count,

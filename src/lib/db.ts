@@ -7,6 +7,9 @@ const pool = new Pool({
   user: process.env.DB_USER || "thisisumed",
   password: process.env.DB_PASSWORD || "U84Wht0kTE8fKcG9s6O5",
   connectionTimeoutMillis: 10000,
+  ssl: process.env.DATABASE_URL || (process.env.DB_HOST || "").includes("neon")
+    ? { rejectUnauthorized: false }
+    : undefined,
 });
 
 export default pool;
