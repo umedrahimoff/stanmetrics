@@ -3,8 +3,8 @@ import { Pool } from "pg";
 const connectionConfig = process.env.DATABASE_URL
   ? {
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-      connectionTimeoutMillis: 15000,
+      ssl: process.env.DATABASE_URL.includes("sslmode=require") ? { rejectUnauthorized: false } : undefined,
+      connectionTimeoutMillis: 20000,
     }
   : {
       host: process.env.DB_HOST || "46.62.224.75",
@@ -12,7 +12,7 @@ const connectionConfig = process.env.DATABASE_URL
       database: process.env.DB_NAME || "stanbase_prod_double",
       user: process.env.DB_USER || "thisisumed",
       password: process.env.DB_PASSWORD || "U84Wht0kTE8fKcG9s6O5",
-      connectionTimeoutMillis: 15000,
+      connectionTimeoutMillis: 20000,
       ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined,
     };
 

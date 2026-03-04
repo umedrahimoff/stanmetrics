@@ -7,14 +7,22 @@ interface CacheEntry<T> {
 
 const cache = new Map<string, CacheEntry<unknown>>();
 
+export function clearFetchCache() {
+  cache.clear();
+}
+
 export async function cachedFetch<T>(url: string): Promise<T> {
   const entry = cache.get(url) as CacheEntry<T> | undefined;
   if (entry && Date.now() - entry.ts < CACHE_TTL_MS) {
-    return entry.data;
+    const d = entry.data as Record<string, unknown>;
+    if (!d?.error) return entry.data;
+    cache.delete(url);
   }
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: "no-store" });
   const data = (await res.json()) as T;
-  cache.set(url, { data, ts: Date.now() });
+  if (!(data as Record<string, unknown>)?.error) {
+    cache.set(url, { data, ts: Date.now() });
+  }
   return data;
 }
 

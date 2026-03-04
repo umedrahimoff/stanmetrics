@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import FilterBar from "@/components/FilterBar";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
-import { cachedFetch, buildQueryString } from "@/lib/fetch-cache";
+import { cachedFetch, buildQueryString, clearFetchCache } from "@/lib/fetch-cache";
 import type { FilterConfig } from "@/components/FilterBar";
 import {
   BarChart,
@@ -168,8 +168,27 @@ export default function Dashboard() {
   if (error) {
     return (
       <Card className="border-red-200 bg-red-50">
-        <CardContent className="pt-6">
-          <p className="text-red-700">Loading error: {error}. Check DB connection.</p>
+        <CardContent className="pt-6 space-y-3">
+          <p className="text-red-700 font-medium">Loading error: {error}</p>
+          <div className="text-sm text-red-600 space-y-1">
+            <p>Vercel: Project Settings → Environment Variables → добавь DB_HOST, DB_NAME, DB_USER, DB_PASSWORD</p>
+            <p>Сервер БД: listen_addresses=*, pg_hba.conf разрешает 0.0.0.0/0, порт 5432 открыт в firewall</p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                clearFetchCache();
+                setError(null);
+                loadData({}, true);
+              }}
+              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Повторить
+            </button>
+            <a href="/api/health" target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline self-center">
+              /api/health
+            </a>
+          </div>
         </CardContent>
       </Card>
     );

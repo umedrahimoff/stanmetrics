@@ -33,6 +33,6 @@ export async function GET(req: Request) {
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error("Funding by year error:", error);
-    return NextResponse.json({ error: "Database error" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Database error" }, { status: 500 });
   }
 }
