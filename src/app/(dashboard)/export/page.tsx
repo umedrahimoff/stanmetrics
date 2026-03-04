@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import ExportBlock, { downloadCsv } from "@/components/ExportBlock";
+import ExportSkeleton from "@/components/ExportSkeleton";
 import FilterBar from "@/components/FilterBar";
 import type { FilterConfig } from "@/components/FilterBar";
 import { UZVC_FIELDS_SELECTABLE, UZVC_LINK_FIELD, type UzvcFieldId } from "@/lib/uzvc-fields";
+import { cachedFetch, buildQueryString } from "@/lib/fetch-cache";
 
 const API_BASE = "/api";
 
@@ -45,9 +47,27 @@ export default function ExportPage() {
   const [loading, setLoading] = useState(true);
   const [uzvcFields, setUzvcFields] = useState<UzvcFieldId[]>(UZVC_FIELDS_SELECTABLE.map((f) => f.id));
 
+  const loadData = useCallback((filters: Record<string, string | number | string[]>) => {
+    setLoading(true);
+    const qs = buildQueryString(filters);
+    const suffix = qs ? `?${qs}` : "";
+    Promise.all([
+      cachedFetch(`${API_BASE}/metrics${suffix}`),
+      cachedFetch(`${API_BASE}/funding-by-year${suffix}`),
+      cachedFetch(`${API_BASE}/companies-by-country${suffix}`),
+      cachedFetch(`${API_BASE}/rounds-by-stage${suffix}`),
+    ])
+      .then(([m, f, c, r]) => {
+        setMetrics((m as { error?: string })?.error ? null : (m as Metrics));
+        setFundingByYear(Array.isArray(f) ? (f as FundingByYear[]) : []);
+        setCompaniesByCountry(Array.isArray(c) ? (c as CompaniesByCountry[]) : []);
+        setRoundsByStage(Array.isArray(r) ? (r as RoundsByStage[]) : []);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   useEffect(() => {
-    fetch("/api/dashboard/filters")
-      .then((r) => r.json())
+    cachedFetch<{ country?: { value: string; label: string }[]; year?: { value: string; label: string }[] }>("/api/dashboard/filters")
       .then((opts) => {
         setFilterConfig([
           { key: "country", label: "Country", type: "multiselect", options: opts.country || [] },
@@ -58,61 +78,10 @@ export default function ExportPage() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    const country = filterValues.country;
-    if (Array.isArray(country) && country.length > 0) {
-      params.set("country", country.join(","));
-    }
-    const year = filterValues.year;
-    if (year) {
-      params.set("year", String(year));
-    }
-    const qs = params.toString();
-    const suffix = qs ? `?${qs}` : "";
+    loadData(filterValues);
+  }, [filterValues, loadData]);
 
-    Promise.all([
-      fetch(`${API_BASE}/metrics${suffix}`).then((r) => r.json()),
-      fetch(`${API_BASE}/funding-by-year${suffix}`).then((r) => r.json()),
-      fetch(`${API_BASE}/companies-by-country${suffix}`).then((r) => r.json()),
-      fetch(`${API_BASE}/rounds-by-stage${suffix}`).then((r) => r.json()),
-    ])
-      .then(([m, f, c, r]) => {
-        setMetrics(m?.error ? null : m);
-        setFundingByYear(Array.isArray(f) ? f : []);
-        setCompaniesByCountry(Array.isArray(c) ? c : []);
-        setRoundsByStage(Array.isArray(r) ? r : []);
-      })
-      .finally(() => setLoading(false));
-  }, [filterValues]);
-
-  const handleFilterApply = () => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    const country = filterValues.country;
-    if (Array.isArray(country) && country.length > 0) {
-      params.set("country", country.join(","));
-    }
-    const year = filterValues.year;
-    if (year) {
-      params.set("year", String(year));
-    }
-    const qs = params.toString();
-    const suffix = qs ? `?${qs}` : "";
-
-    Promise.all([
-      fetch(`${API_BASE}/metrics${suffix}`).then((r) => r.json()),
-      fetch(`${API_BASE}/funding-by-year${suffix}`).then((r) => r.json()),
-      fetch(`${API_BASE}/companies-by-country${suffix}`).then((r) => r.json()),
-      fetch(`${API_BASE}/rounds-by-stage${suffix}`).then((r) => r.json()),
-    ])
-      .then(([m, f, c, r]) => {
-        setMetrics(m?.error ? null : m);
-        setFundingByYear(Array.isArray(f) ? f : []);
-        setCompaniesByCountry(Array.isArray(c) ? c : []);
-        setRoundsByStage(Array.isArray(r) ? r : []);
-      })
-      .finally(() => setLoading(false));
-  };
+  const handleFilterApply = () => loadData(filterValues);
 
   const handleFilterReset = () => {
     setFilterValues({});
@@ -178,6 +147,8 @@ export default function ExportPage() {
       {action}
     </div>
   );
+
+  if (loading && !metrics) return <ExportSkeleton />;
 
   return (
     <div className="space-y-4">

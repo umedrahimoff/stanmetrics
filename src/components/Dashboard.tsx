@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import FilterBar from "@/components/FilterBar";
+import DashboardSkeleton from "@/components/DashboardSkeleton";
+import { cachedFetch, buildQueryString } from "@/lib/fetch-cache";
 import type { FilterConfig } from "@/components/FilterBar";
 import {
   BarChart,
@@ -101,21 +103,19 @@ export default function Dashboard() {
   const [filterConfig, setFilterConfig] = useState<FilterConfig[]>([]);
 
   const fetchAll = useCallback(async (filters: Record<string, string | number | string[]>) => {
-    const params = new URLSearchParams();
+    const params: Record<string, string | number | string[]> = {};
     const country = filters.country;
-    if (Array.isArray(country) && country.length > 0) {
-      params.set("country", country.join(","));
-    }
-    const qs = params.toString();
+    if (Array.isArray(country) && country.length > 0) params.country = country;
+    const qs = buildQueryString(params);
     const suffix = qs ? `?${qs}` : "";
 
     const [m, f, c, r, t, rec] = await Promise.all([
-      fetch(`${API_BASE}/metrics${suffix}`).then((res) => res.json()),
-      fetch(`${API_BASE}/funding-by-year${suffix}`).then((res) => res.json()),
-      fetch(`${API_BASE}/companies-by-country${suffix}`).then((res) => res.json()),
-      fetch(`${API_BASE}/rounds-by-stage${suffix}`).then((res) => res.json()),
-      fetch(`${API_BASE}/top-companies${suffix}`).then((res) => res.json()),
-      fetch(`${API_BASE}/recent-rounds${suffix}`).then((res) => res.json()),
+      cachedFetch(`${API_BASE}/metrics${suffix}`),
+      cachedFetch(`${API_BASE}/funding-by-year${suffix}`),
+      cachedFetch(`${API_BASE}/companies-by-country${suffix}`),
+      cachedFetch(`${API_BASE}/rounds-by-stage${suffix}`),
+      cachedFetch(`${API_BASE}/top-companies${suffix}`),
+      cachedFetch(`${API_BASE}/recent-rounds${suffix}`),
     ]);
     return { m, f, c, r, t, rec };
   }, []);
@@ -125,22 +125,22 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
       const dataPromise = fetchAll(filters);
-      const promises = includeFilters
-        ? Promise.all([dataPromise, fetch("/api/dashboard/filters").then((r) => r.json())])
+      const       promises = includeFilters
+        ? Promise.all([dataPromise, cachedFetch("/api/dashboard/filters")])
         : dataPromise.then((d) => [d, null]);
 
       promises
         .then((res) => {
           const [result, opts] = res as [Awaited<ReturnType<typeof fetchAll>>, { country?: { value: string; label: string }[] } | null];
           const { m, f, c, r, t, rec } = result;
-          const apiError = [m, f, c, r, t, rec].find((x) => x?.error) as { error?: string } | undefined;
+          const apiError = [m, f, c, r, t, rec].find((x: unknown) => (x as { error?: string })?.error) as { error?: string } | undefined;
           if (apiError?.error) setError(apiError.error);
-          setMetrics(m?.error ? null : m);
-          setFundingByYear(Array.isArray(f) ? f : []);
-          setCompaniesByCountry(Array.isArray(c) ? c : []);
-          setRoundsByStage(Array.isArray(r) ? r : []);
-          setTopCompanies(Array.isArray(t) ? t : []);
-          setRecentRounds(Array.isArray(rec) ? rec : []);
+          setMetrics((m as { error?: string })?.error ? null : (m as Metrics));
+          setFundingByYear(Array.isArray(f) ? (f as FundingByYear[]) : []);
+          setCompaniesByCountry(Array.isArray(c) ? (c as CompaniesByCountry[]) : []);
+          setRoundsByStage(Array.isArray(r) ? (r as RoundsByStage[]) : []);
+          setTopCompanies(Array.isArray(t) ? (t as TopCompany[]) : []);
+          setRecentRounds(Array.isArray(rec) ? (rec as RecentRound[]) : []);
           if (opts) {
             setFilterConfig([
               { key: "country", label: "Country", type: "multiselect", options: opts.country || [] },
@@ -163,13 +163,7 @@ export default function Dashboard() {
     loadData({});
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
-      </div>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
   if (error) {
     return (

@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import FilterBar from "@/components/FilterBar";
 import type { FilterConfig } from "@/components/FilterBar";
+import TableSkeleton from "@/components/TableSkeleton";
 import { TABLE_FILTERS } from "@/lib/tableFilters";
+import { cachedFetch, buildQueryString } from "@/lib/fetch-cache";
 
 const TABLE_LABELS: Record<string, string> = {
   companies: "Companies",
@@ -63,22 +65,15 @@ export default function TableView({ tableName }: TableViewProps) {
       setLoading(true);
       setError(null);
       const offset = (pageNum - 1) * PAGE_SIZE;
-      const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
-      Object.entries(filters).forEach(([k, v]) => {
-        if (v === "" || v === undefined || v === null) return;
-        if (Array.isArray(v)) {
-          if (v.length > 0) params.set(k, v.join(","));
-        } else {
-          params.set(k, String(v));
-        }
-      });
-      fetch(`/api/tables/${tableName}?${params}`)
-        .then((r) => r.json())
+      const params = { ...filters, limit: PAGE_SIZE, offset };
+      const qs = buildQueryString(params);
+      const url = `/api/tables/${tableName}?${qs}`;
+      cachedFetch<{ rows: Record<string, unknown>[]; total: number; error?: string }>(url)
         .then((d) => {
           if (d.error) throw new Error(d.error);
-          setData(d);
+          setData(d as { rows: Record<string, unknown>[]; total: number });
         })
-        .catch((e) => setError(e.message))
+        .catch((e: Error) => setError(e.message))
         .finally(() => setLoading(false));
     },
     [tableName]
@@ -92,8 +87,7 @@ export default function TableView({ tableName }: TableViewProps) {
         params.set("country", country.join(","));
       }
       const url = params.toString() ? `${tableFilterSetup.filtersApi}?${params}` : tableFilterSetup.filtersApi;
-      fetch(url)
-        .then((r) => r.json())
+      cachedFetch<Record<string, { value: string; label: string }[]>>(url)
         .then((opts) => {
           setFilterConfig(tableFilterSetup.filters(opts));
         })
@@ -142,13 +136,7 @@ export default function TableView({ tableName }: TableViewProps) {
     fetchData(filterValues, p);
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
-      </div>
-    );
-  }
+  if (loading) return <TableSkeleton />;
 
   if (error) {
     return (
