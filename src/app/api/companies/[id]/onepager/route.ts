@@ -125,7 +125,7 @@ export async function GET(
               values: [companyId],
             }
           );
-          return { rows: res.rows.map((r: Record<string, string>) => ({ name: r[nameCol] || r.name, position: r[roleCol] || r.position || r.role || r.title || "" })) };
+          return { rows: res.rows.map((r: Record<string, string>) => ({ name: r[nameCol] || r.name, position: roleCol ? (r[roleCol] || r.position || r.role || r.title || "") : "" })) };
         }
         return { rows: [] };
       })(),
