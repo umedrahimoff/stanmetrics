@@ -65,7 +65,7 @@ export async function GET(req: Request) {
       LEFT JOIN stages s ON s.id = COALESCE(r.stage_id, c.stage_id)
       WHERE ${whereClause}
       ORDER BY r.date DESC NULLS LAST, r.id
-      LIMIT 10000
+      LIMIT 10
     `,
       values: filterValues,
     });

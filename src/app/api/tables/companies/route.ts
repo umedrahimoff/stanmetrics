@@ -5,7 +5,7 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const format = searchParams.get("format") || "";
-    const maxLimit = format === "csv" ? 10000 : 500;
+    const maxLimit = format === "csv" ? 10 : 500;
     const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), maxLimit);
     const offset = format === "csv" ? 0 : parseInt(searchParams.get("offset") || "0", 10);
     const search = searchParams.get("search") || "";

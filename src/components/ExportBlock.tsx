@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 interface ExportBlockProps {
   title?: string;
@@ -17,25 +16,23 @@ export default function ExportBlock({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <Card className="border-slate-200">
-      <CardHeader
-        className="cursor-pointer select-none py-4"
+    <div className="rounded-lg border border-slate-200 bg-white">
+      <div
+        className="flex cursor-pointer select-none items-center justify-between px-3 py-2"
         onClick={() => setExpanded((e) => !e)}
       >
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-slate-700">{title}</h3>
-          <svg
-            className={`h-5 w-5 text-slate-500 transition-transform ${expanded ? "rotate-180" : ""}`}
+        <h3 className="text-sm font-medium text-slate-700">{title}</h3>
+        <svg
+          className={`h-4 w-4 text-slate-500 transition-transform ${expanded ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
-        </div>
-      </CardHeader>
-      {expanded && <CardContent className="border-t border-slate-100 pt-4">{children}</CardContent>}
-    </Card>
+      </div>
+      {expanded && <div className="border-t border-slate-100 px-3 py-2">{children}</div>}
+    </div>
   );
 }
 

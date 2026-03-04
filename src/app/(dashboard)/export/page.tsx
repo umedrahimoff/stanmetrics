@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import ExportBlock, { downloadCsv } from "@/components/ExportBlock";
 import FilterBar from "@/components/FilterBar";
 import type { FilterConfig } from "@/components/FilterBar";
@@ -131,15 +131,15 @@ export default function ExportPage() {
     }
     lines.push("Funding by year");
     lines.push("Year,Rounds,Amount");
-    fundingByYear.forEach((d) => lines.push(`${d.year},${d.rounds_count},${d.total_amount}`));
+    fundingByYear.slice(0, 10).forEach((d) => lines.push(`${d.year},${d.rounds_count},${d.total_amount}`));
     lines.push("");
     lines.push("Companies by country");
     lines.push("Country,Count");
-    companiesByCountry.forEach((d) => lines.push(`${d.name},${d.companies_count}`));
+    companiesByCountry.slice(0, 10).forEach((d) => lines.push(`${d.name},${d.companies_count}`));
     lines.push("");
     lines.push("Rounds by stage");
     lines.push("Stage,Rounds,Amount");
-    roundsByStage.forEach((d) => lines.push(`${d.name},${d.rounds_count},${d.total_amount}`));
+    roundsByStage.slice(0, 10).forEach((d) => lines.push(`${d.name},${d.rounds_count},${d.total_amount}`));
     downloadCsv(lines.join("\n"), "stanmetrics-overview.csv");
   };
 
@@ -157,7 +157,7 @@ export default function ExportPage() {
   };
 
   const buildTableExportUrl = (table: string) => {
-    const params = new URLSearchParams({ format: "csv", limit: "10000" });
+    const params = new URLSearchParams({ format: "csv", limit: "10" });
     Object.entries(filterValues).forEach(([k, v]) => {
       if (v === "" || v === undefined || v === null) return;
       if (Array.isArray(v)) {
@@ -169,15 +169,16 @@ export default function ExportPage() {
     return `/api/tables/${table}?${params}`;
   };
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Export</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Export data as CSV. Apply filters to narrow down the export.
-        </p>
-      </div>
+  const exportRow = (title: string, desc: string, action: React.ReactNode) => (
+    <div className="flex items-center justify-between gap-4 py-1.5">
+      <span className="text-sm text-slate-600">{desc}</span>
+      {action}
+    </div>
+  );
 
+  return (
+    <div className="space-y-4">
+      <h1 className="text-xl font-bold text-slate-900">Export</h1>
       {filterConfig.length > 0 && (
         <FilterBar
           filters={filterConfig}
@@ -187,96 +188,49 @@ export default function ExportPage() {
           onReset={handleFilterReset}
         />
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Export presets</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <ExportBlock title="Report for UzVC" defaultExpanded>
-            <div className="space-y-4">
-              <p className="text-sm text-slate-600">
-                Rounds report with: Startup project name, Project sector, Customer type, Product stage,
-                Venture fund, Investment amount, Investment year, Stanbase link.
-              </p>
-              <a
-                href={buildUzvcReportUrl()}
-                download
-                className="inline-flex items-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
-              >
-                Download Report for UzVC
-              </a>
-            </div>
-          </ExportBlock>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Export options</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <ExportBlock title="Overview metrics" defaultExpanded>
-            <div className="flex flex-wrap items-center gap-4">
-              <p className="text-sm text-slate-600">
-                Export metrics and chart data (funding by year, companies by country, rounds by stage).
-              </p>
-              <button
-                onClick={exportOverview}
-                disabled={loading}
-                className="inline-flex items-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
-              >
-                Download overview CSV
-              </button>
-            </div>
-          </ExportBlock>
-
-          <ExportBlock title="Companies">
-            <div className="flex flex-wrap items-center gap-4">
-              <p className="text-sm text-slate-600">
-                Export companies table (up to 10,000 rows).
-              </p>
-              <a
-                href={buildTableExportUrl("companies")}
-                download
-                className="inline-flex items-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
-              >
-                Download companies CSV
-              </a>
-            </div>
-          </ExportBlock>
-
-          <ExportBlock title="Investors">
-            <div className="flex flex-wrap items-center gap-4">
-              <p className="text-sm text-slate-600">
-                Export investors table (up to 10,000 rows).
-              </p>
-              <a
-                href={buildTableExportUrl("investors")}
-                download
-                className="inline-flex items-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
-              >
-                Download investors CSV
-              </a>
-            </div>
-          </ExportBlock>
-
-          <ExportBlock title="Rounds">
-            <div className="flex flex-wrap items-center gap-4">
-              <p className="text-sm text-slate-600">
-                Export investment rounds table (up to 10,000 rows).
-              </p>
-              <a
-                href={buildTableExportUrl("investment_rounds")}
-                download
-                className="inline-flex items-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
-              >
-                Download rounds CSV
-              </a>
-            </div>
-          </ExportBlock>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="py-3">
+          <CardContent className="space-y-1">
+            <h3 className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Standard
+            </h3>
+            <ExportBlock title="Overview metrics">
+              {exportRow(
+                "Overview",
+                "Metrics + funding by year, companies by country, rounds by stage",
+                <button onClick={exportOverview} disabled={loading} className="rounded bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700 disabled:opacity-50">
+                  Download
+                </button>
+              )}
+            </ExportBlock>
+            <ExportBlock title="Companies">
+              {exportRow("Companies", "Up to 10 rows", <a href={buildTableExportUrl("companies")} download className="rounded bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700">Download</a>)}
+            </ExportBlock>
+            <ExportBlock title="Investors">
+              {exportRow("Investors", "Up to 10 rows", <a href={buildTableExportUrl("investors")} download className="rounded bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700">Download</a>)}
+            </ExportBlock>
+            <ExportBlock title="Rounds">
+              {exportRow("Rounds", "Up to 10 rows", <a href={buildTableExportUrl("investment_rounds")} download className="rounded bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700">Download</a>)}
+            </ExportBlock>
+          </CardContent>
+        </Card>
+        <Card className="py-3">
+          <CardContent className="space-y-1">
+            <h3 className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Custom
+            </h3>
+            <ExportBlock title="Report for UzVC" defaultExpanded>
+              {exportRow(
+                "UzVC",
+                "Rounds: startup, sector, stage, fund, amount, year, link",
+                <a href={buildUzvcReportUrl()} download className="rounded bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700">
+                  Download
+                </a>
+              )}
+            </ExportBlock>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
