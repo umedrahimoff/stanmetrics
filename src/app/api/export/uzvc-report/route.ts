@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
-import { UZVC_FIELDS } from "@/lib/uzvc-fields";
+import { UZVC_FIELDS_SELECTABLE, UZVC_LINK_FIELD } from "@/lib/uzvc-fields";
 
 const UZBEKISTAN_NAMES = ["Uzbekistan", "Узбекистан"];
+
+const ALL_FIELDS = [...UZVC_FIELDS_SELECTABLE, UZVC_LINK_FIELD];
 
 function escapeCsv(v: string | null): string {
   if (v == null) return "";
@@ -16,9 +18,10 @@ export async function GET(req: Request) {
     const fieldsParam = searchParams.get("fields") || "";
     const requestedFields = fieldsParam
       ? fieldsParam.split(",").map((f) => f.trim()).filter(Boolean)
-      : UZVC_FIELDS.map((f) => f.id);
-    const validFields = requestedFields.filter((id) => UZVC_FIELDS.some((f) => f.id === id));
-    const fields = validFields.length > 0 ? validFields : UZVC_FIELDS.map((f) => f.id);
+      : UZVC_FIELDS_SELECTABLE.map((f) => f.id);
+    const validFields = requestedFields.filter((id) => UZVC_FIELDS_SELECTABLE.some((f) => f.id === id));
+    const selectableFields = validFields.length > 0 ? validFields : UZVC_FIELDS_SELECTABLE.map((f) => f.id);
+    const fields = [...selectableFields, UZVC_LINK_FIELD.id];
 
     const countrySub = `(SELECT id FROM countries WHERE COALESCE(name->>'en', name->>'ru', name::text) = ANY($1::text[]))`;
     const whereClause = `r.status_id = 1 AND (
@@ -64,7 +67,7 @@ export async function GET(req: Request) {
     });
     const rows = result.rows;
 
-    const fieldLabels = Object.fromEntries(UZVC_FIELDS.map((f) => [f.id, f.label]));
+    const fieldLabels = Object.fromEntries(ALL_FIELDS.map((f) => [f.id, f.label]));
     const cols = fields.map((id) => fieldLabels[id] || id);
     const header = cols.join(",");
 

@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import ExportBlock, { downloadCsv } from "@/components/ExportBlock";
 import FilterBar from "@/components/FilterBar";
 import type { FilterConfig } from "@/components/FilterBar";
-import { UZVC_FIELDS, type UzvcFieldId } from "@/lib/uzvc-fields";
+import { UZVC_FIELDS_SELECTABLE, UZVC_LINK_FIELD, type UzvcFieldId } from "@/lib/uzvc-fields";
 
 const API_BASE = "/api";
 
@@ -43,7 +43,7 @@ export default function ExportPage() {
   const [filterValues, setFilterValues] = useState<Record<string, string | number | string[]>>({});
   const [filterConfig, setFilterConfig] = useState<FilterConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uzvcFields, setUzvcFields] = useState<UzvcFieldId[]>(UZVC_FIELDS.map((f) => f.id));
+  const [uzvcFields, setUzvcFields] = useState<UzvcFieldId[]>(UZVC_FIELDS_SELECTABLE.map((f) => f.id));
 
   useEffect(() => {
     fetch("/api/dashboard/filters")
@@ -223,9 +223,9 @@ export default function ExportPage() {
               Custom
             </h3>
             <ExportBlock title="Report for UzVC" defaultExpanded>
-              <p className="mb-3 text-xs text-slate-500">Uzbekistan only. Select fields to include:</p>
+              <p className="mb-3 text-xs text-slate-500">Uzbekistan only. Select fields to include ({UZVC_LINK_FIELD.label} always at the end):</p>
               <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1">
-                {UZVC_FIELDS.map((f) => (
+                {UZVC_FIELDS_SELECTABLE.map((f) => (
                   <label key={f.id} className="flex cursor-pointer items-center gap-1.5 text-sm">
                     <input
                       type="checkbox"
