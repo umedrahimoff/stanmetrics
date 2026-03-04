@@ -19,7 +19,7 @@ export async function middleware(req: NextRequest) {
     }
     return NextResponse.next();
   }
-  if (pathname.startsWith("/api/auth/") || pathname.startsWith("/api/webhooks/")) {
+  if (pathname.startsWith("/api/auth/")) {
     return NextResponse.next();
   }
   const token = req.cookies.get(COOKIE_NAME)?.value;
@@ -38,5 +38,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/login", "/data/:path*", "/export", "/api/((?!auth|webhooks).*)"],
+  matcher: ["/", "/login", "/data/:path*", "/export", "/api/((?!auth).*)"],
 };

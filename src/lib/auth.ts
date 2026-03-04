@@ -1,19 +1,8 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { createHmac, createHash } from "crypto";
 
 const COOKIE_NAME = "stanmetrics_session";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
-
-export interface TelegramAuth {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
-}
 
 export interface SessionUser {
   id: number;
@@ -21,21 +10,6 @@ export interface SessionUser {
   lastName?: string;
   username?: string;
   photoUrl?: string;
-}
-
-export function verifyTelegramAuth(auth: TelegramAuth, botToken: string): boolean {
-  const { hash, ...data } = auth;
-  const dataCheckString = Object.keys(data)
-    .sort()
-    .map((k) => `${k}=${(data as Record<string, unknown>)[k]}`)
-    .join("\n");
-  const secretKey = createHash("sha256").update(botToken).digest();
-  const computedHash = createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
-  if (computedHash !== hash) return false;
-  // Check auth_date is not older than 1 day
-  const now = Math.floor(Date.now() / 1000);
-  if (now - auth.auth_date > 86400) return false;
-  return true;
 }
 
 export async function createSession(user: SessionUser): Promise<string> {
