@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import FilterBar from "@/components/FilterBar";
+import type { FilterConfig } from "@/components/FilterBar";
 import {
   BarChart,
   Bar,
@@ -95,34 +97,70 @@ export default function Dashboard() {
   const [recentRounds, setRecentRounds] = useState<RecentRound[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filterValues, setFilterValues] = useState<Record<string, string | number | string[]>>({});
+  const [filterConfig, setFilterConfig] = useState<FilterConfig[]>([]);
+
+  const fetchAll = useCallback(async (filters: Record<string, string | number | string[]>) => {
+    const params = new URLSearchParams();
+    const country = filters.country;
+    if (Array.isArray(country) && country.length > 0) {
+      params.set("country", country.join(","));
+    }
+    const qs = params.toString();
+    const suffix = qs ? `?${qs}` : "";
+
+    const [m, f, c, r, t, rec] = await Promise.all([
+      fetch(`${API_BASE}/metrics${suffix}`).then((res) => res.json()),
+      fetch(`${API_BASE}/funding-by-year${suffix}`).then((res) => res.json()),
+      fetch(`${API_BASE}/companies-by-country${suffix}`).then((res) => res.json()),
+      fetch(`${API_BASE}/rounds-by-stage${suffix}`).then((res) => res.json()),
+      fetch(`${API_BASE}/top-companies${suffix}`).then((res) => res.json()),
+      fetch(`${API_BASE}/recent-rounds${suffix}`).then((res) => res.json()),
+    ]);
+    return { m, f, c, r, t, rec };
+  }, []);
 
   useEffect(() => {
-    async function fetchAll() {
-      try {
-        const [m, f, c, r, t, rec] = await Promise.all([
-          fetch(`${API_BASE}/metrics`).then((res) => res.json()),
-          fetch(`${API_BASE}/funding-by-year`).then((res) => res.json()),
-          fetch(`${API_BASE}/companies-by-country`).then((res) => res.json()),
-          fetch(`${API_BASE}/rounds-by-stage`).then((res) => res.json()),
-          fetch(`${API_BASE}/top-companies`).then((res) => res.json()),
-          fetch(`${API_BASE}/recent-rounds`).then((res) => res.json()),
+    fetch("/api/dashboard/filters")
+      .then((r) => r.json())
+      .then((opts) => {
+        setFilterConfig([
+          { key: "country", label: "Country", type: "multiselect", options: opts.country || [] },
         ]);
-        const apiError = [m, f, c, r, t, rec].find((x) => x?.error) as { error?: string } | undefined;
-        if (apiError?.error) setError(apiError.error);
-        setMetrics(m?.error ? null : m);
-        setFundingByYear(Array.isArray(f) ? f : []);
-        setCompaniesByCountry(Array.isArray(c) ? c : []);
-        setRoundsByStage(Array.isArray(r) ? r : []);
-        setTopCompanies(Array.isArray(t) ? t : []);
-        setRecentRounds(Array.isArray(rec) ? rec : []);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load data");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchAll();
+      })
+      .catch(() => setFilterConfig([]));
   }, []);
+
+  const loadData = useCallback(
+    (filters: Record<string, string | number | string[]>) => {
+      setLoading(true);
+      setError(null);
+      fetchAll(filters)
+        .then(({ m, f, c, r, t, rec }) => {
+          const apiError = [m, f, c, r, t, rec].find((x) => x?.error) as { error?: string } | undefined;
+          if (apiError?.error) setError(apiError.error);
+          setMetrics(m?.error ? null : m);
+          setFundingByYear(Array.isArray(f) ? f : []);
+          setCompaniesByCountry(Array.isArray(c) ? c : []);
+          setRoundsByStage(Array.isArray(r) ? r : []);
+          setTopCompanies(Array.isArray(t) ? t : []);
+          setRecentRounds(Array.isArray(rec) ? rec : []);
+        })
+        .catch((e) => setError(e instanceof Error ? e.message : "Failed to load data"))
+        .finally(() => setLoading(false));
+    },
+    [fetchAll]
+  );
+
+  useEffect(() => {
+    loadData({});
+  }, [loadData]);
+
+  const handleFilterApply = () => loadData(filterValues);
+  const handleFilterReset = () => {
+    setFilterValues({});
+    loadData({});
+  };
 
   if (loading) {
     return (
@@ -168,6 +206,15 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {filterConfig.length > 0 && (
+        <FilterBar
+          filters={filterConfig}
+          values={filterValues}
+          onChange={(key, value) => setFilterValues((prev) => ({ ...prev, [key]: value }))}
+          onApply={handleFilterApply}
+          onReset={handleFilterReset}
+        />
+      )}
       {/* Metric cards with Shine Border */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {metrics && (

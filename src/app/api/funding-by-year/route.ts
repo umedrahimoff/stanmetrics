@@ -1,18 +1,31 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const result = await pool.query(`
+    const { searchParams } = new URL(req.url);
+    const countryParam = searchParams.get("country") || "";
+    const countries = countryParam ? countryParam.split(",").map((c) => c.trim()).filter(Boolean) : [];
+
+    const roundsWhere =
+      countries.length
+        ? `AND (r.country_id IN (SELECT id FROM countries WHERE name->>'en' = ANY($1::text[]) OR name->>'ru' = ANY($1::text[]))
+            OR r.company_id IN (SELECT id FROM companies WHERE country_id IN (SELECT id FROM countries WHERE name->>'en' = ANY($1::text[]) OR name->>'ru' = ANY($1::text[]))))`
+        : "";
+
+    const result = await pool.query({
+      text: `
       SELECT 
-        EXTRACT(YEAR FROM date)::int as year,
+        EXTRACT(YEAR FROM r.date)::int as year,
         COUNT(*) as rounds_count,
-        COALESCE(SUM(amount), 0) as total_amount
-      FROM investment_rounds 
-      WHERE status_id = 1 AND date IS NOT NULL
-      GROUP BY EXTRACT(YEAR FROM date)
+        COALESCE(SUM(r.amount), 0) as total_amount
+      FROM investment_rounds r
+      WHERE r.status_id = 1 AND r.date IS NOT NULL ${roundsWhere}
+      GROUP BY EXTRACT(YEAR FROM r.date)
       ORDER BY year ASC
-    `);
+    `,
+      values: countries.length ? [countries] : [],
+    });
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error("Funding by year error:", error);

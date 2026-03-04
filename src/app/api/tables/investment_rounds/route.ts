@@ -4,8 +4,10 @@ import pool from "@/lib/db";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), 500);
-    const offset = parseInt(searchParams.get("offset") || "0", 10);
+    const format = searchParams.get("format") || "";
+    const maxLimit = format === "csv" ? 10000 : 500;
+    const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), maxLimit);
+    const offset = format === "csv" ? 0 : parseInt(searchParams.get("offset") || "0", 10);
     const search = searchParams.get("search") || "";
     const countryParam = searchParams.get("country") || "";
     const countries = countryParam ? countryParam.split(",").map((c) => c.trim()).filter(Boolean) : [];
@@ -127,6 +129,24 @@ export async function GET(req: Request) {
       investors: r.investors,
       country: r.country,
     }));
+
+    if (format === "csv") {
+      const cols = ["id", "date", "company_name", "company_url", "round_url", "amount", "valuation", "stage", "round_type", "investors", "country"];
+      const escape = (v: unknown) => {
+        if (Array.isArray(v)) {
+          const names = (v as { name: string }[]).map((x) => x.name).join("; ");
+          return names.includes(",") || names.includes('"') || names.includes("\n") ? `"${names.replace(/"/g, '""')}"` : names;
+        }
+        const s = v == null ? "" : String(v);
+        return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const header = cols.join(",");
+      const lines = rows.map((r) => cols.map((c) => escape((r as Record<string, unknown>)[c])).join(","));
+      const csv = [header, ...lines].join("\n");
+      return new NextResponse(csv, {
+        headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="rounds.csv"' },
+      });
+    }
 
     return NextResponse.json({ rows, total, limit, offset });
   } catch (error) {

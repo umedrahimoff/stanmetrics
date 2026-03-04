@@ -61,6 +61,19 @@ export default function Sidebar() {
               </li>
             ))}
           </ul>
+          <p className="mb-2 mt-4 px-2 text-xs font-medium uppercase tracking-wider text-slate-400">
+            Export
+          </p>
+          <Link
+            href="/export"
+            className={`block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              pathname === "/export"
+                ? "bg-slate-100 text-slate-900"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            Export data
+          </Link>
         </nav>
       </div>
     </aside>

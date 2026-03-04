@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const result = await pool.query(`
+    const { searchParams } = new URL(req.url);
+    const countryParam = searchParams.get("country") || "";
+    const countries = countryParam ? countryParam.split(",").map((c) => c.trim()).filter(Boolean) : [];
+
+    const countryWhere =
+      countries.length
+        ? `AND (r.country_id IN (SELECT id FROM countries WHERE name->>'en' = ANY($1::text[]) OR name->>'ru' = ANY($1::text[]))
+            OR r.company_id IN (SELECT id FROM companies c JOIN countries co ON co.id = c.country_id WHERE co.name->>'en' = ANY($1::text[]) OR co.name->>'ru' = ANY($1::text[])))`
+        : "";
+
+    const result = await pool.query({
+      text: `
       SELECT 
         COALESCE(r.company_name, c.name) as company_name,
         r.amount,
@@ -14,10 +25,12 @@ export async function GET() {
       LEFT JOIN companies c ON c.id = r.company_id
       LEFT JOIN stages s ON s.id = r.stage_id
       LEFT JOIN investment_round_types irt ON irt.id = r.investment_round_type_id
-      WHERE r.status_id = 1
+      WHERE r.status_id = 1 ${countryWhere}
       ORDER BY r.date DESC NULLS LAST
       LIMIT 15
-    `);
+    `,
+      values: countries.length ? [countries] : [],
+    });
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error("Recent rounds error:", error);

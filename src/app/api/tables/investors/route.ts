@@ -4,8 +4,10 @@ import pool from "@/lib/db";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), 500);
-    const offset = parseInt(searchParams.get("offset") || "0", 10);
+    const format = searchParams.get("format") || "";
+    const maxLimit = format === "csv" ? 10000 : 500;
+    const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), maxLimit);
+    const offset = format === "csv" ? 0 : parseInt(searchParams.get("offset") || "0", 10);
     const search = searchParams.get("search") || "";
     const countryParam = searchParams.get("country") || "";
     const countries = countryParam ? countryParam.split(",").map((c) => c.trim()).filter(Boolean) : [];
@@ -112,6 +114,20 @@ export async function GET(req: Request) {
         ? new Date(r.created_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })
         : null,
     }));
+
+    if (format === "csv") {
+      const cols = ["id", "name", "stanbase_url", "founded", "country", "city", "type", "created"];
+      const escape = (v: unknown) => {
+        const s = v == null ? "" : String(v);
+        return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const header = cols.join(",");
+      const lines = rows.map((r) => cols.map((c) => escape((r as Record<string, unknown>)[c])).join(","));
+      const csv = [header, ...lines].join("\n");
+      return new NextResponse(csv, {
+        headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="investors.csv"' },
+      });
+    }
 
     return NextResponse.json({ rows, total, limit, offset });
   } catch (error) {
