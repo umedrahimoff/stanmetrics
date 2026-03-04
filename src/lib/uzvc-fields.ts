@@ -3,7 +3,7 @@ export const UZVC_FIELDS_SELECTABLE = [
   { id: "project_sector", label: "Project sector" },
   { id: "product_stage", label: "Product stage" },
   { id: "venture_fund", label: "Name of the venture fund that invested" },
-  { id: "amount", label: "Investment amount" },
+  { id: "amount", label: "Investment amount (USD)" },
   { id: "year", label: "Investment year" },
 ] as const;
 

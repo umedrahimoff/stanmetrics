@@ -87,6 +87,13 @@ export default function ExportPage() {
     setFilterValues({});
   };
 
+  const formatAmount = (v: string | number | null) => {
+    if (v == null || v === "") return "";
+    const n = typeof v === "string" ? parseFloat(v) : v;
+    if (isNaN(n)) return String(v);
+    return `$${Math.round(n).toLocaleString("en-US")} USD`;
+  };
+
   const exportOverview = () => {
     const lines: string[] = [];
     if (metrics) {
@@ -95,22 +102,22 @@ export default function ExportPage() {
       lines.push(`Companies,${metrics.companies}`);
       lines.push(`Investors,${metrics.investors}`);
       lines.push(`Rounds,${metrics.rounds}`);
-      lines.push(`Total Funding,${metrics.total_funding}`);
+      lines.push(`Total Funding,${formatAmount(metrics.total_funding)}`);
       lines.push(`News,${metrics.news}`);
       lines.push(`Events,${metrics.events}`);
       lines.push("");
     }
     lines.push("Funding by year");
-    lines.push("Year,Rounds,Amount");
-    fundingByYear.slice(0, 10).forEach((d) => lines.push(`${d.year},${d.rounds_count},${d.total_amount}`));
+    lines.push("Year,Rounds,Amount (USD)");
+    fundingByYear.slice(0, 10).forEach((d) => lines.push(`${d.year},${d.rounds_count},${formatAmount(d.total_amount)}`));
     lines.push("");
     lines.push("Companies by country");
     lines.push("Country,Count");
     companiesByCountry.slice(0, 10).forEach((d) => lines.push(`${d.name},${d.companies_count}`));
     lines.push("");
     lines.push("Rounds by stage");
-    lines.push("Stage,Rounds,Amount");
-    roundsByStage.slice(0, 10).forEach((d) => lines.push(`${d.name},${d.rounds_count},${d.total_amount}`));
+    lines.push("Stage,Rounds,Amount (USD)");
+    roundsByStage.slice(0, 10).forEach((d) => lines.push(`${d.name},${d.rounds_count},${formatAmount(d.total_amount)}`));
     downloadCsv(lines.join("\n"), "stanmetrics-overview.csv");
   };
 

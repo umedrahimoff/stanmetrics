@@ -14,7 +14,7 @@ function escapeCsv(v: string | null): string {
 
 function formatAmount(n: number | null): string {
   if (n == null) return "";
-  return Math.round(n).toLocaleString("en-US");
+  return `$${Math.round(n).toLocaleString("en-US")} USD`;
 }
 
 export async function GET(req: Request) {
