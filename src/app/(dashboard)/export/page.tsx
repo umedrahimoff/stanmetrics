@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import ExportBlock, { downloadCsv } from "@/components/ExportBlock";
 import FilterBar from "@/components/FilterBar";
 import type { FilterConfig } from "@/components/FilterBar";
+import { UZVC_FIELDS, type UzvcFieldId } from "@/lib/uzvc-fields";
 
 const API_BASE = "/api";
 
@@ -42,6 +43,7 @@ export default function ExportPage() {
   const [filterValues, setFilterValues] = useState<Record<string, string | number | string[]>>({});
   const [filterConfig, setFilterConfig] = useState<FilterConfig[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uzvcFields, setUzvcFields] = useState<UzvcFieldId[]>(UZVC_FIELDS.map((f) => f.id));
 
   useEffect(() => {
     fetch("/api/dashboard/filters")
@@ -145,15 +147,16 @@ export default function ExportPage() {
 
   const buildUzvcReportUrl = () => {
     const params = new URLSearchParams();
-    const country = filterValues.country;
-    if (Array.isArray(country) && country.length > 0) {
-      params.set("country", country.join(","));
-    }
-    const year = filterValues.year;
-    if (year) {
-      params.set("year", String(year));
+    if (uzvcFields.length > 0) {
+      params.set("fields", uzvcFields.join(","));
     }
     return `/api/export/uzvc-report?${params.toString()}`;
+  };
+
+  const toggleUzvcField = (id: UzvcFieldId) => {
+    setUzvcFields((prev) =>
+      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+    );
   };
 
   const buildTableExportUrl = (table: string) => {
@@ -220,13 +223,27 @@ export default function ExportPage() {
               Custom
             </h3>
             <ExportBlock title="Report for UzVC" defaultExpanded>
-              {exportRow(
-                "UzVC",
-                "Rounds: startup, sector, stage, fund, amount, year, link",
-                <a href={buildUzvcReportUrl()} download className="rounded bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700">
-                  Download
-                </a>
-              )}
+              <p className="mb-3 text-xs text-slate-500">Uzbekistan only. Select fields to include:</p>
+              <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1">
+                {UZVC_FIELDS.map((f) => (
+                  <label key={f.id} className="flex cursor-pointer items-center gap-1.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={uzvcFields.includes(f.id)}
+                      onChange={() => toggleUzvcField(f.id)}
+                      className="rounded border-slate-300"
+                    />
+                    {f.label}
+                  </label>
+                ))}
+              </div>
+              <a
+                href={buildUzvcReportUrl()}
+                download
+                className="inline-block rounded bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700"
+              >
+                Download
+              </a>
             </ExportBlock>
           </CardContent>
         </Card>

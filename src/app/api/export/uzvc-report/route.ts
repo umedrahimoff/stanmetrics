@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
+import { UZVC_FIELDS } from "@/lib/uzvc-fields";
+
+const UZBEKISTAN_NAMES = ["Uzbekistan", "Узбекистан"];
 
 function escapeCsv(v: string | null): string {
   if (v == null) return "";
@@ -10,28 +13,18 @@ function escapeCsv(v: string | null): string {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const countryParam = searchParams.get("country") || "";
-    const countries = countryParam ? countryParam.split(",").map((c) => c.trim()).filter(Boolean) : [];
-    const yearParam = searchParams.get("year") || "";
+    const fieldsParam = searchParams.get("fields") || "";
+    const requestedFields = fieldsParam
+      ? fieldsParam.split(",").map((f) => f.trim()).filter(Boolean)
+      : UZVC_FIELDS.map((f) => f.id);
+    const validFields = requestedFields.filter((id) => UZVC_FIELDS.some((f) => f.id === id));
+    const fields = validFields.length > 0 ? validFields : UZVC_FIELDS.map((f) => f.id);
 
-    const conditions: string[] = ["r.status_id = 1"];
-    const filterValues: (string | number | string[])[] = [];
-    let paramIdx = 1;
-
-    if (countries.length > 0) {
-      conditions.push(
-        `((co.name->>'en' = ANY($${paramIdx}::text[]) OR co.name->>'ru' = ANY($${paramIdx}::text[])) OR (co_c.name->>'en' = ANY($${paramIdx}::text[]) OR co_c.name->>'ru' = ANY($${paramIdx}::text[])))`
-      );
-      filterValues.push(countries);
-      paramIdx++;
-    }
-    if (yearParam) {
-      conditions.push(`EXTRACT(YEAR FROM r.date) = $${paramIdx}`);
-      filterValues.push(parseInt(yearParam, 10));
-      paramIdx++;
-    }
-
-    const whereClause = conditions.join(" AND ");
+    const countrySub = `(SELECT id FROM countries WHERE COALESCE(name->>'en', name->>'ru', name::text) = ANY($1::text[]))`;
+    const whereClause = `r.status_id = 1 AND (
+      r.country_id IN ${countrySub}
+      OR r.company_id IN (SELECT id FROM companies WHERE country_id IN ${countrySub})
+    )`;
 
     const result = await pool.query({
       text: `
@@ -67,36 +60,29 @@ export async function GET(req: Request) {
       ORDER BY r.date DESC NULLS LAST, r.id
       LIMIT 10
     `,
-      values: filterValues,
+      values: [UZBEKISTAN_NAMES],
     });
     const rows = result.rows;
 
-    const cols = [
-      "Startup project name",
-      "Project sector",
-      "Customer type",
-      "Product stage",
-      "Name of the venture fund that invested",
-      "Investment amount",
-      "Investment year",
-      "Stanbase link",
-    ];
-
+    const fieldLabels = Object.fromEntries(UZVC_FIELDS.map((f) => [f.id, f.label]));
+    const cols = fields.map((id) => fieldLabels[id] || id);
     const header = cols.join(",");
+
     const lines = rows.map((r) => {
       const year = r.date ? new Date(r.date).getFullYear() : "";
       const amount = r.amount != null ? String(r.amount) : "";
       const link = r.slug ? `https://stanbase.tech/funding-round/${r.slug}` : "";
-      return [
-        escapeCsv(r.startup_name),
-        escapeCsv(r.project_sector),
-        "", // Customer type - not in schema
-        escapeCsv(r.product_stage),
-        escapeCsv(r.venture_fund),
-        escapeCsv(amount),
-        escapeCsv(String(year)),
-        escapeCsv(link),
-      ].join(",");
+      const values: Record<string, string> = {
+        startup_name: escapeCsv(r.startup_name),
+        project_sector: escapeCsv(r.project_sector),
+        customer_type: "",
+        product_stage: escapeCsv(r.product_stage),
+        venture_fund: escapeCsv(r.venture_fund),
+        amount: escapeCsv(amount),
+        year: escapeCsv(String(year)),
+        link: escapeCsv(link),
+      };
+      return fields.map((id) => values[id] ?? "").join(",");
     });
     const csv = [header, ...lines].join("\n");
 

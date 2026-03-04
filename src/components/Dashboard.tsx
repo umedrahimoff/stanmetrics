@@ -120,23 +120,18 @@ export default function Dashboard() {
     return { m, f, c, r, t, rec };
   }, []);
 
-  useEffect(() => {
-    fetch("/api/dashboard/filters")
-      .then((r) => r.json())
-      .then((opts) => {
-        setFilterConfig([
-          { key: "country", label: "Country", type: "multiselect", options: opts.country || [] },
-        ]);
-      })
-      .catch(() => setFilterConfig([]));
-  }, []);
-
   const loadData = useCallback(
-    (filters: Record<string, string | number | string[]>) => {
+    (filters: Record<string, string | number | string[]>, includeFilters = false) => {
       setLoading(true);
       setError(null);
-      fetchAll(filters)
-        .then(({ m, f, c, r, t, rec }) => {
+      const dataPromise = fetchAll(filters);
+      const promises = includeFilters
+        ? Promise.all([dataPromise, fetch("/api/dashboard/filters").then((r) => r.json())])
+        : dataPromise.then((d) => [d, null]);
+
+      promises
+        .then(([result, opts]: [Awaited<ReturnType<typeof fetchAll>>, { country?: { value: string; label: string }[] } | null]) => {
+          const { m, f, c, r, t, rec } = result;
           const apiError = [m, f, c, r, t, rec].find((x) => x?.error) as { error?: string } | undefined;
           if (apiError?.error) setError(apiError.error);
           setMetrics(m?.error ? null : m);
@@ -145,6 +140,11 @@ export default function Dashboard() {
           setRoundsByStage(Array.isArray(r) ? r : []);
           setTopCompanies(Array.isArray(t) ? t : []);
           setRecentRounds(Array.isArray(rec) ? rec : []);
+          if (opts) {
+            setFilterConfig([
+              { key: "country", label: "Country", type: "multiselect", options: opts.country || [] },
+            ]);
+          }
         })
         .catch((e) => setError(e instanceof Error ? e.message : "Failed to load data"))
         .finally(() => setLoading(false));
@@ -153,7 +153,7 @@ export default function Dashboard() {
   );
 
   useEffect(() => {
-    loadData({});
+    loadData({}, true);
   }, [loadData]);
 
   const handleFilterApply = () => loadData(filterValues);
