@@ -130,7 +130,8 @@ export default function Dashboard() {
         : dataPromise.then((d) => [d, null]);
 
       promises
-        .then(([result, opts]: [Awaited<ReturnType<typeof fetchAll>>, { country?: { value: string; label: string }[] } | null]) => {
+        .then((res) => {
+          const [result, opts] = res as [Awaited<ReturnType<typeof fetchAll>>, { country?: { value: string; label: string }[] } | null];
           const { m, f, c, r, t, rec } = result;
           const apiError = [m, f, c, r, t, rec].find((x) => x?.error) as { error?: string } | undefined;
           if (apiError?.error) setError(apiError.error);
