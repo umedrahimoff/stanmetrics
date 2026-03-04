@@ -1,5 +1,6 @@
 export const UZVC_FIELDS_SELECTABLE = [
   { id: "startup_name", label: "Startup project name" },
+  { id: "employees_count", label: "Employees count" },
   { id: "project_sector", label: "Project sector" },
   { id: "product_stage", label: "Product stage" },
   { id: "venture_fund", label: "Name of the venture fund that invested" },

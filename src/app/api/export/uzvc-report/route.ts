@@ -38,6 +38,7 @@ export async function GET(req: Request) {
       text: `
       SELECT 
         COALESCE(r.company_name, c.name) as startup_name,
+        c.employees_count,
         (
           SELECT string_agg(COALESCE(i.name_en, i.name), ', ')
           FROM json_array_elements(COALESCE(c.industries, '[]'::json)) elem,
@@ -89,6 +90,7 @@ export async function GET(req: Request) {
       const link = r.slug ? `https://stanbase.tech/funding-round/${r.slug}` : "";
       const values: Record<string, string> = {
         startup_name: escapeCsv(r.startup_name),
+        employees_count: r.employees_count != null ? String(r.employees_count) : "",
         project_sector: escapeCsv(r.project_sector),
         product_stage: escapeCsv(r.product_stage),
         venture_fund: escapeCsv(r.venture_fund),
